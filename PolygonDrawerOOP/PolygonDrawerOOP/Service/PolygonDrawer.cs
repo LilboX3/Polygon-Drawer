@@ -14,6 +14,9 @@ namespace PolygonDrawerOOP.Service
         public List<Polygon> Polygons { get; } = new();
         public Polygon? Current { get; private set; }
 
+        private Stack<ICommand> undoStack = new();
+        private Stack<ICommand> redoStack = new();
+
         public void StartPolygon(System.Windows.Point start)
         {
             Current = new Polygon();
@@ -21,15 +24,35 @@ namespace PolygonDrawerOOP.Service
             Polygons.Add(Current);
         }
 
-        public void AddVertex(System.Windows.Point p)
-        {
-            Current?.AddVertex(p);
-        }
-
         public void FinishPolygon()
         {
             Current?.Close();
             Current = null;
+        }
+
+        public void ExecuteCommand(ICommand cmd)
+        {
+            cmd.Execute();
+            undoStack.Push(cmd);
+            redoStack.Clear();
+        }
+
+        public void Undo()
+        {
+            if (!undoStack.Any()) return;
+
+            var cmd = undoStack.Pop();
+            cmd.Undo();
+            redoStack.Push(cmd);
+        }
+
+        public void Redo()
+        {
+            if (!redoStack.Any()) return;
+
+            var cmd = redoStack.Pop();
+            cmd.Execute();
+            undoStack.Push(cmd);
         }
     }
 }

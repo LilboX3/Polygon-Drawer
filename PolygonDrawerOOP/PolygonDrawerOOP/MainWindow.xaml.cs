@@ -1,4 +1,5 @@
-﻿using PolygonDrawerOOP.Service;
+﻿using PolygonDrawerOOP.Model;
+using PolygonDrawerOOP.Service;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,6 +26,18 @@ namespace PolygonDrawerOOP
             InitializeComponent();
         }
 
+        void OnUndo(object sender, RoutedEventArgs e)
+        {
+            drawer.Undo();
+            RedrawCanvas();
+        }
+
+        void OnRedo(object sender, RoutedEventArgs e)
+        {
+            drawer.Redo();
+            RedrawCanvas();
+        }
+
         void OnMouseDown(object sender, MouseButtonEventArgs e)
         {
             Point p = e.GetPosition(DrawingCanvas);
@@ -32,6 +45,7 @@ namespace PolygonDrawerOOP
             if(e.ClickCount == 2)
             {
                 FinishCurrentPolygon();
+                RedrawCanvas();
                 return;
             }
 
@@ -41,9 +55,11 @@ namespace PolygonDrawerOOP
             }
             else
             {
-                drawer.AddVertex(p);
-                DrawLineBetweenLastVertices();
+                drawer.ExecuteCommand(
+                    new AddVertexCommand(drawer.Current!, p)
+                );
             }
+            RedrawCanvas();
         }
 
         void OnMouseMove(object sender, MouseEventArgs e)
@@ -57,39 +73,21 @@ namespace PolygonDrawerOOP
         void FinishCurrentPolygon()
         {
             if (drawer.Current == null) return;
+
+            drawer.ExecuteCommand(
+                new ClosePolygonCommand(drawer.Current)
+            );
+
             drawer.FinishPolygon();
             RemovePreviewLine();
         }
 
-        private void DrawLineBetweenLastVertices()
-        {
-            var vertices = drawer.Current.Vertices;
-
-            if (vertices.Count < 2)
-                return;
-
-            Point from = vertices[vertices.Count - 2];
-            Point to = vertices[vertices.Count - 1];
-
-            Line line = new Line
-            {
-                X1 = from.X,
-                Y1 = from.Y,
-                X2 = to.X,
-                Y2 = to.Y,
-                Stroke = Brushes.Black,
-                StrokeThickness = 2
-            };
-
-            DrawingCanvas.Children.Add(line);
-        }
-
         private void UpdatePreviewLine(Point mousePos)
         {
-            var vertices = drawer.Current.Vertices;
+            var vertices = drawer.Current!.Vertices;
             if (vertices.Count == 0) return;
 
-            Point last = vertices[^1];
+            Point last = vertices[^1]; // ^1 == vertices.Count - 1
 
             if (previewLine == null)
             {
@@ -108,9 +106,61 @@ namespace PolygonDrawerOOP
             previewLine.Y2 = mousePos.Y;
         }
 
+        private void RedrawCanvas()
+        {
+            DrawingCanvas.Children.Clear();
+
+            foreach (var polygon in drawer.Polygons)
+            {
+                DrawPolygon(polygon);
+            }
+
+            if (drawer.Current != null && previewLine != null)
+            {
+                DrawingCanvas.Children.Add(previewLine);
+            }
+        }
+
+        private void DrawPolygon(PolygonDrawerOOP.Model.Polygon polygon)
+        {
+            var vertices = polygon.Vertices;
+            if (vertices.Count < 2) return;
+
+            for (int i = 1; i < vertices.Count; i++)
+            {
+                DrawingCanvas.Children.Add(new Line
+                {
+                    X1 = vertices[i - 1].X,
+                    Y1 = vertices[i - 1].Y,
+                    X2 = vertices[i].X,
+                    Y2 = vertices[i].Y,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 2
+                });
+            }
+
+            if (polygon.IsClosed && vertices.Count > 2)
+            {
+                DrawingCanvas.Children.Add(new Line
+                {
+                    X1 = vertices[^1].X,
+                    Y1 = vertices[^1].Y,
+                    X2 = vertices[0].X,
+                    Y2 = vertices[0].Y,
+                    Stroke = Brushes.Black,
+                    StrokeThickness = 2
+                });
+            }
+        }
+
+
         private void RemovePreviewLine()
         {
-            previewLine = null;
+            if (previewLine != null)
+            {
+                DrawingCanvas.Children.Remove(previewLine);
+                previewLine = null;
+            }
         }
     }
 }
