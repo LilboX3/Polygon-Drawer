@@ -63,26 +63,47 @@ For FinishPolygon mesages:
  - if there is a current polygon, reset the current polygon to None and add the current polygon as a new elemnet to finishedPolygons.
 *)
 let updateModel (msg : Msg) (model : Model) =
-    model
+    match msg with
+    | AddPoint p ->
+        match model.currentPolygon with
+        | None -> 
+            // Create a new polygon with this point
+            { model with currentPolygon = Some [p] }
+        | Some polygon ->
+            // Prepend the point to the existing polygon
+            { model with currentPolygon = Some (p :: polygon) }
+    | FinishPolygon ->
+        match model.currentPolygon with
+        | None -> 
+            // No polygon to finish, ignore
+            model
+        | Some polygon ->
+            // Add the current polygon to finished polygons and reset current polygon
+            { model with 
+                finishedPolygons = polygon :: model.finishedPolygons
+                currentPolygon = None }
+    | _ -> model
 
 // wraps an update function with undo/redo.
 let addUndoRedo (updateFunction : Msg -> Model -> Model) (msg : Msg) (model : Model) =
-    // first let us, handle the cursor position, which is not undoable, and handle undo/redo messages
-    // in a next step we actually run the "core" system logics.
     match msg with
     | SetCursorPos p -> 
         // update the mouse position and create a new model.
         { model with mousePos = p }
     | Undo -> 
-        // TODO implement undo logics, HINT: restore the model stored in past, and replace the current
-        // state with it.
-        model
+        // Restore the model from past and set current as future
+        match model.past with
+        | None -> model
+        | Some pastModel -> { pastModel with future = Some model }
     | Redo -> 
-        // TODO: same as undo
-        model
+        // Restore the model from future and set current as past
+        match model.future with
+        | None -> model
+        | Some futureModel -> { futureModel with past = Some model }
     | _ -> 
         // use the provided update function for all remaining messages
-        { updateFunction msg model with past = Some model }
+        let newModel = updateFunction msg model
+        { newModel with past = Some model; future = None }
 
 
 let update (msg : Msg) (model : Model)  =

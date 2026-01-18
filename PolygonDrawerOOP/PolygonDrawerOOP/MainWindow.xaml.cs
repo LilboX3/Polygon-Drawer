@@ -138,19 +138,6 @@ namespace PolygonDrawerOOP
                     StrokeThickness = 2
                 });
             }
-
-            if (polygon.IsClosed && vertices.Count > 2)
-            {
-                DrawingCanvas.Children.Add(new Line
-                {
-                    X1 = vertices[^1].X,
-                    Y1 = vertices[^1].Y,
-                    X2 = vertices[0].X,
-                    Y2 = vertices[0].Y,
-                    Stroke = Brushes.Black,
-                    StrokeThickness = 2
-                });
-            }
         }
 
 
