@@ -26,7 +26,7 @@ type Model = {
     // the polygon, we are currently working on (and extending, vertex-by-vertex). Having the current
     // one explicitly as oposed to already in the finishedPolygons list makes the code a bit more elegant
     // and approachable
-    currentPolygon : Option<PolyLine>
+    currentPolygon : Option<PolyLine> //Some (=has value) or None (no current polygon)
     // current positon of the mouse (to draw a preview)
     mousePos : Option<Coord>
     // optionally, the model before this current state (note, that this immutable!), used for redo
@@ -67,18 +67,18 @@ let updateModel (msg : Msg) (model : Model) =
     | AddPoint p ->
         match model.currentPolygon with
         | None -> 
-            // Create a new polygon with this point
+            //New polygon with point
             { model with currentPolygon = Some [p] }
         | Some polygon ->
-            // Prepend the point to the existing polygon
+            //Add new point to beginning of list in polygon
             { model with currentPolygon = Some (p :: polygon) }
     | FinishPolygon ->
         match model.currentPolygon with
         | None -> 
-            // No polygon to finish, ignore
+            //Ignore
             model
         | Some polygon ->
-            // Add the current polygon to finished polygons and reset current polygon
+            //finish current polygon: add to list of finished polygons and reset current polygon
             { model with 
                 finishedPolygons = polygon :: model.finishedPolygons
                 currentPolygon = None }
@@ -91,12 +91,12 @@ let addUndoRedo (updateFunction : Msg -> Model -> Model) (msg : Msg) (model : Mo
         // update the mouse position and create a new model.
         { model with mousePos = p }
     | Undo -> 
-        // Restore the model from past and set current as future
+        //Take past model as current anf set current as future
         match model.past with
         | None -> model
         | Some pastModel -> { pastModel with future = Some model }
     | Redo -> 
-        // Restore the model from future and set current as past
+        //Take future model as current and set current as past
         match model.future with
         | None -> model
         | Some futureModel -> { futureModel with past = Some model }
